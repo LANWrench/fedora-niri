@@ -39,7 +39,12 @@ jobs:
           mkdir -p iso/{LiveOS,isolinux}
           
           # Save Docker image as a squashfs file
-          docker export $(docker create fedora-niri:latest) | sudo mksquashfs - iso/LiveOS/squashfs.img -comp xz -b 1M
+          CONTAINER_ID=$(docker create fedora-niri:latest)
+          sudo mkdir -p rootfs
+          docker export $CONTAINER_ID | sudo tar -x -C rootfs
+          docker rm $CONTAINER_ID
+          sudo mksquashfs rootfs iso/LiveOS/squashfs.img -comp xz -b 1M
+          sudo rm -rf rootfs
           
           # Download isolinux files from Fedora
           wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/isolinux.bin -P iso/isolinux/
