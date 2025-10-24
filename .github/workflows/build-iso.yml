@@ -1,4 +1,4 @@
-name: Build Docker Image and ISO
+name: Build and Push Container Image
 
 on:
   push:
@@ -21,68 +21,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/fedora-niri
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          load: true
-          tags: fedora-niri:latest
-          
-      - name: Install required packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xorriso squashfs-tools
-
-      - name: Create ISO from Docker image
-        run: |
-          # Create temporary directories
-          mkdir -p iso/{LiveOS,isolinux}
-          
-          # Save Docker image as a squashfs file
-          CONTAINER_ID=$(docker create fedora-niri:latest)
-          sudo mkdir -p rootfs
-          docker export $CONTAINER_ID | sudo tar -x -C rootfs
-          docker rm $CONTAINER_ID
-          sudo mksquashfs rootfs iso/LiveOS/squashfs.img -comp xz -b 1M
-          sudo rm -rf rootfs
-          
-          # Download isolinux files from Fedora
-          wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/isolinux.bin -P iso/isolinux/
-          wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/vesamenu.c32 -P iso/isolinux/
-          wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/ldlinux.c32 -P iso/isolinux/
-          wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/libcom32.c32 -P iso/isolinux/
-          wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/libutil.c32 -P iso/isolinux/
-          
-          # Create isolinux configuration
-          cat > iso/isolinux/isolinux.cfg << EOL
-          default vesamenu.c32
-          timeout 600
-          
-          label linux
-            menu label ^Start Fedora Niri Live
-            kernel vmlinuz
-            append initrd=initrd.img root=live:CDLABEL=FEDORA-NIRI rd.live.image quiet
-          EOL
-          
-          # Extract kernel and initrd from the container
-          docker create --name temp fedora-niri:latest
-          docker cp temp:/boot/vmlinuz-$(docker run --rm fedora-niri:latest uname -r) iso/isolinux/vmlinuz
-          docker cp temp:/boot/initramfs-$(docker run --rm fedora-niri:latest uname -r).img iso/isolinux/initrd.img
-          docker rm temp
-          
-          # Create the ISO
-          sudo xorriso -as mkisofs \
-            -o fedora-niri.iso \
-            -b isolinux/isolinux.bin \
-            -c isolinux/boot.cat \
-            -no-emul-boot \
-            -boot-load-size 4 \
-            -boot-info-table \
-            -R -J -v -T \
-            iso
-
-      - name: Upload ISO artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: fedora-niri-iso
-          path: fedora-niri.iso
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
