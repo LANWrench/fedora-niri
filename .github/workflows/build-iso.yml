@@ -31,7 +31,8 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y xorriso squashfs-tools
+          sudo apt-get install -y xorriso squashfs-tools python3-pip
+          sudo pip3 install docker2squash
 
       - name: Create ISO from Docker image
         run: |
@@ -39,7 +40,7 @@ jobs:
           mkdir -p iso/{LiveOS,isolinux}
           
           # Save Docker image as a squashfs file
-          docker save fedora-niri:latest | sudo docker2squash -q -t iso/LiveOS/squashfs.img
+          docker export $(docker create fedora-niri:latest) | sudo mksquashfs - iso/LiveOS/squashfs.img -comp xz -b 1M
           
           # Download isolinux files from Fedora
           wget https://mirror.fcix.net/fedora/linux/releases/42/Everything/x86_64/os/isolinux/isolinux.bin -P iso/isolinux/
