@@ -15,8 +15,6 @@ RUN dnf install -y 'dnf5-command(copr)' && \
 # Layer 3: Install display manager and base desktop components
 RUN dnf install -y \
     gdm \
-    polkit \
-    NetworkManager \
     xdg-desktop-portal \
     xdg-desktop-portal-gtk \
     && dnf clean all
@@ -37,20 +35,15 @@ RUN dnf install -y \
     && dnf clean all
 
 # Layer 5: Enable system services
-RUN systemctl enable gdm.service && \
-    systemctl set-default graphical.target
+# RUN systemctl enable gdm.service && \
+#     systemctl set-default graphical.target
 
 # Layer 6: Copy Niri configuration and create GDM session file
 COPY configs/niri/config.kdl /etc/niri/config.kdl
 
-RUN mkdir -p /usr/share/wayland-sessions && \
-    printf '[Desktop Entry]\n\
-Name=Niri\n\
-Comment=Scrollable-tiling Wayland compositor\n\
-Exec=niri-session\n\
-Type=Application\n\
-DesktopNames=niri\n' > /usr/share/wayland-sessions/niri.desktop && \
-    chmod 644 /usr/share/wayland-sessions/niri.desktop
+RUN mkdir -p /usr/share/wayland-sessions
+
+COPY --chmod=644 system/usr_share_wayland-sessions_niri.desktop /usr/share/wayland-sessions/niri.desktop
 
 # Final cleanup
 RUN dnf clean all && \
