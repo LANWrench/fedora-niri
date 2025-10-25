@@ -8,9 +8,8 @@ RUN dnf install -y \
     && dnf clean all
 
 # Layer 2: Enable Niri COPR repository
-RUN dnf install -y 'dnf-command(copr)'
-
-RUN dnf copr enable -y yalter/niri && \
+RUN dnf install -y 'dnf-command(copr)' && \
+    dnf copr enable -y yalter/niri && \
     dnf clean all
 
 # Layer 3: Install display manager and base desktop components
