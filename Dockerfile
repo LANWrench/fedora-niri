@@ -34,9 +34,11 @@ RUN dnf install -y \
     slurp \
     && dnf clean all
 
-# Layer 5: Enable system services
-# RUN systemctl enable gdm.service && \
-#     systemctl set-default graphical.target
+# Layer 5: Configure systemd for graphical boot
+# Create systemd preset to enable GDM
+RUN mkdir -p /usr/lib/systemd/system-preset && \
+    echo "enable gdm.service" > /usr/lib/systemd/system-preset/90-gdm.preset && \
+    ln -sf /usr/lib/systemd/system/graphical.target /etc/systemd/system/default.target
 
 # Layer 6: Copy Niri configuration and create GDM session file
 COPY configs/niri/config.kdl /etc/niri/config.kdl
@@ -45,6 +47,11 @@ RUN mkdir -p /usr/share/wayland-sessions
 
 COPY --chmod=644 system/usr_share_wayland-sessions_niri.desktop /usr/share/wayland-sessions/niri.desktop
 
+# Layer 7: Trigger SELinux relabeling on first boot
+# This ensures all files have correct SELinux contexts after package installation
+RUN touch /.autorelabel
+
 # Final cleanup
 RUN dnf clean all && \
-    rm -rf /var/cache/dnf
+    rm -rf /var/cache/dnf/* && \
+    rm -rf /tmp/* /var/tmp/*
