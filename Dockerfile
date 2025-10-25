@@ -1,99 +1,46 @@
 # Base: Minimal Fedora bootc image
 FROM quay.io/fedora/fedora-bootc:42
 
-# Layer 1: Enable RPM Fusion repositories
+# Layer 1: Enable RPM Fusion repositories (for codecs and proprietary drivers)
 RUN dnf install -y \
     https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm \
     && dnf clean all
 
-# Layer 2: Install Wayland/Graphics stack and base desktop dependencies
-RUN dnf install -y \
-    # Wayland core
-    wayland-devel \
-    wayland-protocols-devel \
-    # Graphics libraries
-    mesa-dri-drivers \
-    mesa-libgbm \
-    mesa-libEGL \
-    libdrm \
-    # Input and seat management
-    libinput \
-    libseat \
-    libxkbcommon \
-    # System services
-    dbus \
-    systemd \
-    udev \
-    # Audio/Video
-    pipewire \
-    pipewire-utils \
-    wireplumber \
-    # Font rendering
-    pango \
-    cairo \
-    cairo-gobject \
-    # Fonts
-    dejavu-fonts \
-    liberation-fonts \
-    google-noto-sans-fonts \
-    # Icons and themes
-    adwaita-icon-theme \
-    adwaita-cursor-theme \
-    && dnf clean all
-
-# Layer 3: Install GDM display manager
-RUN dnf install -y \
-    gdm \
-    gnome-session \
-    && dnf clean all
-
-# Layer 4: Enable Niri COPR repository
+# Layer 2: Enable Niri COPR repository
 RUN dnf copr enable -y yalter/niri
 
-# Layer 5: Install Niri compositor and Wayland utilities
+# Layer 3: Install display manager and base desktop components
 RUN dnf install -y \
-    niri \
-    # Screen locking
-    swaylock \
-    # Background management
-    swaybg \
-    swayidle \
-    # XDG portals for screen sharing, file chooser, etc.
+    gdm \
+    polkit \
+    NetworkManager \
     xdg-desktop-portal \
     xdg-desktop-portal-gtk \
     && dnf clean all
 
-# Layer 6: Install essential desktop utilities referenced in config
+# Layer 4: Install Niri and desktop utilities
+# Note: niri automatically pulls in all Wayland/graphics dependencies
 RUN dnf install -y \
-    # Terminal emulator
+    niri \
     kitty \
-    # Application launcher
-    rofi-wayland \
-    # Status bar
+    rofi \
     waybar \
-    # Notification daemon
     mako \
-    # Media control
+    swaylock \
     playerctl \
-    # Brightness control
     brightnessctl \
-    # Screenshot utilities
     grim \
     slurp \
-    # Basic utilities
-    polkit \
-    NetworkManager \
     && dnf clean all
 
-# Layer 7: Enable system services
+# Layer 5: Enable system services
 RUN systemctl enable gdm.service && \
     systemctl set-default graphical.target
 
-# Layer 8: Copy Niri configuration
+# Layer 6: Copy Niri configuration and create GDM session file
 COPY configs/niri/config.kdl /etc/niri/config.kdl
 
-# Layer 9: Create GDM session file for Niri
 RUN mkdir -p /usr/share/wayland-sessions && \
     printf '[Desktop Entry]\n\
 Name=Niri\n\
