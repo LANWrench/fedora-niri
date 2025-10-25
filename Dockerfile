@@ -8,7 +8,7 @@ RUN dnf install -y \
     && dnf clean all
 
 # Layer 2: Enable Niri COPR repository
-RUN dnf install -y 'dnf-command(copr)' && \
+RUN dnf install -y 'dnf5-command(copr)' && \
     dnf copr enable -y yalter/niri && \
     dnf clean all
 
